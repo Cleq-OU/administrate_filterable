@@ -30,8 +30,15 @@ module AdministrateFilterable
         next unless resources.column_names.include?(key.to_s) && value.present?
 
         # TODO: Add support for relational filter (e.g. filter by `belongs_to` association, etc)
-        sanitized_query = ActiveRecord::Base.send(:sanitize_sql_array, ["#{key} LIKE ?", "%#{value}%"])
-        resources = resources.where(sanitized_query)
+        column = resources.columns_hash[key.to_s]
+
+        # Use LIKE for string columns, exact match for others (integer, enum, date, etc)
+        if column && column.type == :string
+          sanitized_query = ActiveRecord::Base.send(:sanitize_sql_array, ["#{key} LIKE ?", "%#{value}%"])
+          resources = resources.where(sanitized_query)
+        else
+          resources = resources.where(key => value)
+        end
       end
 
       resources
