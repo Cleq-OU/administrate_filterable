@@ -31,6 +31,12 @@ module AdministrateFilterable
         attr.is_a?(Administrate::Field::DateTime) || attr.is_a?(Administrate::Field::Date)
       end.map { |attr| attr.attribute.to_s }
 
+      # Build mapping of BelongsTo attribute names to foreign keys
+      belongs_to_mapping = {}
+      @filterable_attributes.select { |attr| attr.is_a?(Administrate::Field::BelongsTo) }.each do |attr|
+        belongs_to_mapping[attr.attribute.to_s] = attr.attribute.to_s.foreign_key
+      end
+
       # Process date range filters first
       date_fields.each do |field|
         from_val = filter_params["#{field}_from"]
@@ -47,20 +53,23 @@ module AdministrateFilterable
         # Skip date range params (already processed)
         next if date_fields.any? { |field| key_str == "#{field}_from" || key_str == "#{field}_to" }
 
-        # Regular filters
-        next unless resources.column_names.include?(key_str) && value.present?
+        # Map BelongsTo attribute names to foreign keys
+        column_name = belongs_to_mapping[key_str] || key_str
 
-        column = resources.columns_hash[key_str]
+        # Regular filters
+        next unless resources.column_names.include?(column_name) && value.present?
+
+        column = resources.columns_hash[column_name]
 
         # Handle array values (from checkboxes)
         if value.is_a?(Array)
           cleaned_values = value.reject(&:blank?)
-          resources = resources.where(key => cleaned_values) if cleaned_values.any?
+          resources = resources.where(column_name => cleaned_values) if cleaned_values.any?
         elsif column && column.type == :string
-          sanitized_query = ActiveRecord::Base.send(:sanitize_sql_array, ["#{key_str} LIKE ?", "%#{value}%"])
+          sanitized_query = ActiveRecord::Base.send(:sanitize_sql_array, ["#{column_name} LIKE ?", "%#{value}%"])
           resources = resources.where(sanitized_query)
         else
-          resources = resources.where(key => value)
+          resources = resources.where(column_name => value)
         end
       end
 
@@ -73,16 +82,25 @@ module AdministrateFilterable
       # Get filterable field names
       filterable_field_names = @filterable_attributes.map { |attr| attr.attribute.to_s }
 
+      # Get belongs_to field names and their foreign keys
+      belongs_to_fields = @filterable_attributes.select do |attr|
+        attr.is_a?(Administrate::Field::BelongsTo)
+      end
+      belongs_to_foreign_keys = belongs_to_fields.map do |attr|
+        attr.attribute.to_s.foreign_key
+      end
+
       # Get date field names (for _from and _to params)
       date_field_names = @filterable_attributes.select do |attr|
         attr.is_a?(Administrate::Field::DateTime) || attr.is_a?(Administrate::Field::Date)
       end.map { |attr| attr.attribute.to_s }
 
       # Build list of all permitted filter param keys
-      permitted_keys = filterable_field_names + date_field_names.flat_map { |f| ["#{f}_from", "#{f}_to"] }
+      # Include both attribute names and foreign keys for belongs_to associations
+      permitted_keys = filterable_field_names + belongs_to_foreign_keys + date_field_names.flat_map { |f| ["#{f}_from", "#{f}_to"] }
 
-      # Permit array values for fields (checkboxes)
-      permitted_arrays = filterable_field_names.map { |f| { f => [] } }
+      # Permit array values for fields (checkboxes) and foreign keys
+      permitted_arrays = (filterable_field_names + belongs_to_foreign_keys).map { |f| { f => [] } }
 
       # Extract and permit filter params
       params.permit(*permitted_keys, *permitted_arrays).to_h
