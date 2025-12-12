@@ -1,0 +1,7 @@
+<div class="field-unit field-unit--<%= attribute.html_class %> administrate-filterable__field">
+  <%= f.label attribute.attribute, class: "field-unit__label" %>
+  <div class="administrate-filterable__date-range">
+    <%= f.date_field "#{attribute.attribute}_from", placeholder: "From" %>
+    <%= f.date_field "#{attribute.attribute}_to", placeholder: "To" %>
+  </div>
+</div>

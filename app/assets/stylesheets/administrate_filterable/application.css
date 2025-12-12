@@ -76,6 +76,23 @@
 
 .administrate-filterable__form .field-unit__field {
   margin-left: 0;
+  width: 100%;
+}
+
+.administrate-filterable__form select {
+  width: 100%;
+}
+
+.administrate-filterable__date-range {
+  display: flex;
+  gap: 10px;
+  width: 100%;
+}
+
+.administrate-filterable__date-range input {
+  flex: 1;
+  min-width: 0;
+  box-sizing: border-box;
 }
 
 .administrate-filterable__form .form-actions {
