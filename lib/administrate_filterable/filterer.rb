@@ -23,7 +23,23 @@ module AdministrateFilterable
     def filtered_resources(resources)
       @filterable_attributes = AdministrateFilterable::FiltererService.filter_attributes(dashboard, new_resource)
 
-      filter_params = params[resource_name]
+      # Get filterable field names
+      filterable_field_names = @filterable_attributes.map { |attr| attr.attribute.to_s }
+
+      # Get date field names (for _from and _to params)
+      date_field_names = @filterable_attributes.select do |attr|
+        attr.is_a?(Administrate::Field::DateTime) || attr.is_a?(Administrate::Field::Date)
+      end.map { |attr| attr.attribute.to_s }
+
+      # Extract only filter-related params (ignore page, order, controller, action, etc.)
+      filter_params = params.slice(*filterable_field_names)
+
+      # Add date range params
+      date_field_names.each do |field|
+        filter_params["#{field}_from"] = params["#{field}_from"] if params["#{field}_from"].present?
+        filter_params["#{field}_to"] = params["#{field}_to"] if params["#{field}_to"].present?
+      end
+
       return resources if filter_params.blank?
 
       # Get date/datetime field names from dashboard
@@ -52,7 +68,11 @@ module AdministrateFilterable
 
         column = resources.columns_hash[key_str]
 
-        if column && column.type == :string
+        # Handle array values (from checkboxes)
+        if value.is_a?(Array)
+          cleaned_values = value.reject(&:blank?)
+          resources = resources.where(key => cleaned_values) if cleaned_values.any?
+        elsif column && column.type == :string
           sanitized_query = ActiveRecord::Base.send(:sanitize_sql_array, ["#{key_str} LIKE ?", "%#{value}%"])
           resources = resources.where(sanitized_query)
         else
