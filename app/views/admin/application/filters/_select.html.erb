@@ -1,0 +1,11 @@
+<div class="field-unit field-unit--<%= attribute.html_class %> administrate-filterable__field">
+  <%= label_tag attribute.attribute, attribute.attribute.to_s.humanize, class: "field-unit__label" %>
+  <div class="administrate-filterable__checkboxes">
+    <% attribute.selectable_options.each do |option| %>
+      <label class="administrate-filterable__checkbox-label">
+        <%= check_box_tag "#{attribute.attribute}[]", option, false, id: "#{attribute.attribute}_#{option}" %>
+        <span><%= option.to_s.humanize %></span>
+      </label>
+    <% end %>
+  </div>
+</div>

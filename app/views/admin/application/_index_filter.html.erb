@@ -13,11 +13,13 @@
       <h2>Filter <%= resource_title %></h2>
     </header>
 
-    <%= form_with(model: [:admin, new_resource], method: :get, html: { class: "form administrate-filterable__form" }) do |f| %>
+    <%= form_with(url: request.path, method: :get, scope: nil, html: { class: "form administrate-filterable__form" }) do |f| %>
       <% @filterable_attributes.each do |attribute| -%>
         <% # TODO: Add capability to customize the filter behavior (e.g. search by exact match, search by partial match, etc just like in the ActiveAdmin filter) %>
         <% if attribute.is_a?(Administrate::Field::DateTime) || attribute.is_a?(Administrate::Field::Date) %>
           <%= render 'admin/application/filters/date_range', attribute: attribute, f: f %>
+        <% elsif attribute.is_a?(Administrate::Field::Select) %>
+          <%= render 'admin/application/filters/select', attribute: attribute, f: f %>
         <% else %>
           <%= render 'admin/application/filters/default', attribute: attribute, f: f %>
         <% end %>
